@@ -1,0 +1,60 @@
+{
+	"type": "container",
+	"style": "width:1000px;justify-content: center;",
+	"children": [
+		{
+			"style": "width:100%;justify-content: center;",
+			"layout": "horizontal",
+			"type": "container",
+			"html": "<h2>Create Agreement From Workflow</h2>"
+		},
+		{
+			"style": "width:100%;justify-content: center;",
+			"classNames":"dynamic-toolbar",
+			"layout": "horizontal",
+			"type": "container",
+			"children": [
+				{
+					"style": "margin-right:10px;min-width:450px;",
+					"type": "inputfield",
+					"label": "Select Workflow",
+					"name": "workflowId",
+					"listName": "workflows",
+					"subType": "combobox"
+				},
+				{
+					"classNames": "p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Create Agreement",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "setFormRequest",
+						"params": [
+							"workflowForm","form/"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				},
+				{
+					"classNames": "p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Back",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "getStaticForm",
+						"params": [
+							"forms/startForm.json"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				}
+			]
+		}
+	]
+}

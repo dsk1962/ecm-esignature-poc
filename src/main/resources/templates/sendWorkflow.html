@@ -1,0 +1,175 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<title>Send workflow based agreement</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<script
+	src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+<style>
+.tcell {
+	border-width: 0px 1px 0px 1px;
+	border-style: none;
+	border-color: black;
+	min-width: 250px;
+}
+
+.tcell input,.tcell select {
+	width: 100%;
+	margin-bottom: 4px;
+}
+
+.tcell1 {
+	border-width: 0px 0px 0px 1px;
+	border-style: none;
+	border-color: black;
+	margin-bottom: 4px;
+}
+
+.required {
+	color: red;
+}
+
+.trow {
+	font-size: 14px;
+	border-width: 0px 0px 1px 0px;
+	border-style: none;
+	border-color: black;
+}
+
+.trow1 {
+	font-size: 14px;
+	border-width: 1px 0px 1px 0px;
+	border-style: none;
+	border-color: black;
+}
+
+.nowrap {
+	white-space: nowrap;
+	padding: 0px 5px 0px 5px;
+}
+
+.toolbar {
+	white-space: nowrap;
+	padding: 0px 5px 20px 5px;
+}
+
+.invisible {
+	display: none;
+}
+
+.section {
+	font-weight: bold;
+}
+
+.detailscontainer {
+	display: none;
+	text-align: center;
+	z-index: 10000;
+	position: fixed;
+	top: 10px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+		setTimeout(function() {
+			var cbArr = $('#Messages input:checked');
+			for (var i = 0; i < cbArr.length; i++)
+				cbArr[i].checked = false;
+		}, 500);
+	});
+	function processCheckboxClick() {
+		var disabled = $('#Messages input:checked').length <= 0;
+		$("#reprocessButton").prop("disabled", disabled);
+	}
+	function showDetails(btn) {
+		var container = $('#TextContainer');
+		container.show();
+		var text = btn.parentNode.firstChild.innerText;
+		var left = (window.innerWidth - container.width()) / 2;
+		var top = (window.innerHeight - container.height()) / 2;
+		container.css("left", left + "px");
+		container.css("top", top + "px");
+		try {
+			var v = JSON.parse(text);
+			text = JSON.stringify(v, null, 4);
+		} catch (err) {
+		}
+		$("#TextContent").val(text);
+	}
+</script>
+</head>
+<body>
+
+	<form id="wfSelector">
+		<div class="toolbar">
+			Select workflow: <select name="workflowId"
+				onChange="$('#wfSelector').submit();">
+				<option th:each="wf : ${workflowList}" th:value="${wf.id}"
+					th:text="${wf.displayName}" th:selected="${wf.id==workflow.id}"></option>
+			</select>
+		</div>
+	</form>
+	<form action="createWorkflowAgreement" method="post" autocomplete="on">
+		<input type="hidden" th:value="${workflow.id}" name="workflowId"/>
+		<p class="section">Recipients</p>
+		<table id="Recipients"
+			style="border-spacing: 0px; border-collapse: collapse;"
+			th:if="${!workflow.RecipientsListInfo.empty}">
+			<tbody>
+				<tr class="trow" th:each="recipient : ${workflow.RecipientsListInfo}">
+					<td class="tcell1 nowrap" style="min-width: 10px"><span
+						class="required" th:if="${recipient.minListCount>0}">*</span><span
+						th:text="${recipient.label}"></span></td>
+					<td class="tcell nowrap"><input type="email" autocomplete="on"
+						th:name='${"_recipient_" + recipient.name}'></td>
+				</tr>
+			</tbody>
+		</table>
+		<p class="section">Fields</p>
+		<table id="Fields"
+			style="border-spacing: 0px; border-collapse: collapse;"
+			th:if="${!workflow.mergeFieldsInfo.empty}">
+			<tbody>
+				<tr class="trow" th:each="field : ${workflow.mergeFieldsInfo}">
+					<td class="tcell1 nowrap" style="min-width: 10px"><span
+						class="required" th:if='${field.required}'>*</span><span
+						th:text="${field.displayName}"></span></td>
+					<td class="tcell nowrap"><input type="text"
+						th:name='${"_field_" + field.fieldName}'></td>
+				</tr>
+			</tbody>
+		</table>
+		<p class="section">Documents</p>
+		<table id="Fields"
+			style="border-spacing: 0px; border-collapse: collapse;"
+			th:if="${!workflow.fileInfos.empty}">
+			<tbody>
+				<tr class="trow" th:each="document : ${workflow.fileInfos}">
+					<td class="tcell1 nowrap" style="min-width: 10px"><span
+						class="required" th:if='${document.required}'>*</span><span
+						th:text="${document.label}"></span></td>
+					<td class="tcell nowrap"><select
+						th:name='${"_document_" + document.name}' th:if="${document.workflowLibraryDocumentSelectorList != null && !document.workflowLibraryDocumentSelectorList.empty}">
+							<option th:if=${!document.required} selected/>
+							<option
+								th:each="libDocument : ${document.workflowLibraryDocumentSelectorList}"
+								th:value="${libDocument.workflowLibDoc}"
+								th:text="${libDocument.label}"
+								th:selected="${document.required && libDocument==document.workflowLibraryDocumentSelectorList.get(0)}"></option>
+					</select>
+					<select
+						th:name='${"_document_" + document.name}' th:if="${document.workflowLibraryDocumentSelectorList == null || document.workflowLibraryDocumentSelectorList.empty}">
+							<option th:if=${!document.required}/>
+							<option
+								th:each="libDocument : ${libDocList}"
+								th:value="${libDocument.id}"
+								th:text="${libDocument.name}"
+								th:selected="${document.required && libDocument==libDocList.get(0)}"></option>
+					</select></td>
+				</tr>
+			</tbody>
+		</table>
+		<button type="submit">Submit</button>
+	</form>
+</body>
+</html>

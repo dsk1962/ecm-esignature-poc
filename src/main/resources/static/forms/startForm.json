@@ -1,0 +1,52 @@
+{
+	"type": "container",
+	"style": "width:1000px;justify-content: center;",
+	"children": [
+		{
+			"style": "width:100%;justify-content: center;",
+			"layout": "horizontal",
+			"type": "container",
+			"html": "<h2>Create New Agreement</h2>"
+		},
+		{
+			"style": "width:100%;justify-content: center;",
+			"layout": "horizontal",
+			"classNames":"dynamic-toolbar",
+			"type": "container",
+			"children": [
+				{
+					"classNames": "TestClassBF p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Create From Template",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "getStaticForm",
+						"params": [
+							"forms/fromTemplate.json"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				},
+				{
+					"classNames": "TestClassBF p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Create From Workflow",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "getStaticForm",
+						"params": [
+							"forms/fromWorkflow.json"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				}
+			]
+		}
+	]
+}

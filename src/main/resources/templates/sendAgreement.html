@@ -1,0 +1,83 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<title>Reprocess Messages. Search for failed messages</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<script
+	src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+<style>
+.tcell {
+	border-width: 0px 1px 0px 1px;
+	border-style: solid;
+	border-color: black;
+}
+
+.tcell1 {
+	border-width: 0px 0px 0px 1px;
+	border-style: solid;
+	border-color: black;
+}
+
+.trow {
+	font-size: 14px;
+	border-width: 0px 0px 1px 0px;
+	border-style: solid;
+	border-color: black;
+}
+
+.trow1 {
+	font-size: 14px;
+	border-width: 1px 0px 1px 0px;
+	border-style: solid;
+	border-color: black;
+}
+
+.nowrap {
+	white-space: nowrap;
+	padding: 0px 5px 0px 5px;
+}
+
+.toolbar {
+	white-space: nowrap;
+	padding: 0px 5px 20px 5px;
+}
+
+.invisible {
+	display: none;
+}
+
+.detailscontainer {
+	display: none;
+	text-align: center;
+	z-index: 10000;
+	position: fixed;
+	top: 10px;
+}
+</style>
+<script>
+	
+</script>
+</head>
+<body>
+
+	<form action="sendAgreement" method="get">
+		<input type="hidden" name="docId"
+			value="CBJCHBCAABAADyR7IIDzIFBLOux1kIfBVv2f-ROvqD0A"/>
+		<table>
+			<tr>
+				<td>Patient Name</td>
+				<td><input name="EmailConsent_patientName" /></td>
+			</tr>
+			<tr>
+				<td>Email for communication</td>
+				<td><input name="EmailConsent_patientEmailID" /></td>
+			</tr>
+			<tr>
+				<td>Participant email</td>
+				<td><input name="participantEmail" /></td>
+			</tr>
+		</table>
+		<button type="submit">Submit</button>
+	</form>
+</body>
+</html>

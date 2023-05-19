@@ -1,0 +1,134 @@
+{
+	"id": 1000,
+	"type": "container",
+	"style": "width:1000px;",
+	"children": [
+		{
+			"id": 100,
+			"type": "container",
+			"classNames": "TestClassC",
+			"layout": "horizontal",
+			"children": [
+				{
+					"id": 101,
+					"type": "container",
+					"layout": "vertical",
+					"children": [
+						{
+							"id": 103,
+							"type": "container",
+							"html": "<h2>Column 1</h2>"
+						},
+						{
+							"id": 1,
+							"type": "inputfield",
+							"classNames": "TestClassIF",
+							"label": "Text Label",
+							"isRequired": true,
+							"minLength": 5,
+							"maxLength": 10,
+							"name": "textValue",
+							"config": {
+								"labelPosition": "top"
+							},
+							"subType": "text"
+						},
+						{
+							"id": 2,
+							"type": "inputfield",
+							"label": "Date Label",
+							"name": "dateValue",
+							"subType": "date"
+						},
+						{
+							"id": 3,
+							"type": "inputfield",
+							"label": "Numeric Label",
+							"name": "numericValue",
+							"readonly":false,
+							"subType": "numeric",
+							"minValue": "36",
+							"initValue": "25.4"
+						},
+						{
+							"id": 4,
+							"type": "inputfield",
+							"label": "Checkbox Label",
+							"name": "checkboxValue",
+							"subType": "checkbox"
+						},
+						{
+							"id": 5,
+							"type": "inputfield",
+							"label": "Combobox Label",
+							"name": "comboboxValue",
+							"subType": "combobox",
+							"listName": "states.json",
+							"initValue": "MN"
+						}
+					]
+				},
+				{
+					"id": 102,
+					"type": "container",
+					"layout": "vertical",
+					"children": [
+						{
+							"id": 104,
+							"type": "container",
+							"html": "<h2>Column 2</h2>"
+						},
+						{
+							"id": 11,
+							"type": "inputfield",
+							"label": "Phone number",
+							"isRequired": true,
+							"name": "phoneNumber",
+							"mask": "(999) 999-9999",
+							"subType": "mask",
+							"initValue": "1112223456"
+						},
+						{
+							"id": 12,
+							"type": "inputfield",
+							"label": "Password",
+							"name": "password",
+							"subType": "password"
+						},
+						{
+							"id": 23,
+							"type": "inputfield",
+							"label": "Comment",
+							"disabled":true,
+							"name": "comment",
+							"subType": "textarea",
+							"config": {
+								"rows": 5,
+								"labelPosition": "twop"
+							},
+							"placeholder": "Enter your comment",
+							"initValue": "Initial Comment"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": 1001,
+			"type": "container",
+			"layout": "horizontal",
+			"style": "justify-content:end;",
+			"children": [
+				{
+					"id": 111,
+					"classNames": "TestClassBF p-button-success",
+					"type": "button",
+					"label": "Show Data",
+					"config": {
+						"icon": "icon1"
+					}
+				}
+			]
+		}
+	]
+}

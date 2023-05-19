@@ -1,0 +1,138 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+<title>Send workflow based agreement</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<script
+	src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+<style>
+.tcell {
+	border-width: 0px 1px 0px 1px;
+	border-style: none;
+	border-color: black;
+	min-width: 250px;
+}
+
+.tcell input {
+	width: 100%;
+	margin-bottom: 4px;
+}
+
+.tcell1 {
+	border-width: 0px 0px 0px 1px;
+	border-style: none;
+	border-color: black;
+	margin-bottom: 4px;
+}
+
+.error {
+	color: red;
+}
+
+.trow {
+	font-size: 14px;
+	border-width: 0px 0px 1px 0px;
+	border-style: none;
+	border-color: black;
+}
+
+.trow1 {
+	font-size: 14px;
+	border-width: 1px 0px 1px 0px;
+	border-style: none;
+	border-color: black;
+}
+
+.nowrap {
+	white-space: nowrap;
+	padding: 0px 5px 0px 5px;
+}
+
+.toolbar {
+	white-space: nowrap;
+	padding: 0px 5px 20px 5px;
+}
+
+.invisible {
+	display: none;
+}
+
+.section {
+	font-weight: bold;
+}
+
+.detailscontainer {
+	display: none;
+	text-align: center;
+	z-index: 10000;
+	position: fixed;
+	top: 10px;
+}
+</style>
+<script>
+	$(document).ready(function() {
+		setTimeout(function() {
+			var cbArr = $('#Messages input:checked');
+			for (var i = 0; i < cbArr.length; i++)
+				cbArr[i].checked = false;
+		}, 500);
+	});
+	function processCheckboxClick() {
+		var disabled = $('#Messages input:checked').length <= 0;
+		$("#reprocessButton").prop("disabled", disabled);
+	}
+	function showDetails(btn) {
+		var container = $('#TextContainer');
+		container.show();
+		var text = btn.parentNode.firstChild.innerText;
+		var left = (window.innerWidth - container.width()) / 2;
+		var top = (window.innerHeight - container.height()) / 2;
+		container.css("left", left + "px");
+		container.css("top", top + "px");
+		try {
+			var v = JSON.parse(text);
+			text = JSON.stringify(v, null, 4);
+		} catch (err) {
+		}
+		$("#TextContent").val(text);
+	}
+</script>
+</head>
+<body>
+
+	<div class="error" th:if="${!success}" th:text="${message}"></div>
+	<form th:if="${success}" action="agreementInfo">
+		<input type="hidden" name="agreementId" th:value="${agreementInfo.id}" />
+		<table style="border-spacing: 0px; border-collapse: collapse;">
+			<tbody>
+				<tr class="trow">
+					<td class="tcell1 nowrap" style="min-width: 10px">Status</td>
+					<td class="tcell nowrap" th:text="${agreementInfo.status}"></td>
+				</tr>
+				<tr class="trow">
+					<td class="tcell1 nowrap" style="min-width: 10px">Signature
+						Type</td>
+					<td class="tcell nowrap" th:text="${agreementInfo.signatureType}"></td>
+				</tr>
+			</tbody>
+		</table>
+		<div th:each="infoList : ${signInfoList}">
+			<table style="border-spacing: 0px; border-collapse: collapse;" th:each="signUrl : ${infoList.signingUrls}">
+				<tbody>
+					<tr class="trow">
+						<td class="tcell1 nowrap" style="min-width: 10px">Sign Url</td>
+						<td class="tcell nowrap" ><a th:href="${signUrl.esignUrl}" target="_blank">Open agreement for signing</a></td>
+					</tr>
+					<tr class="trow">
+						<td class="tcell1 nowrap" style="min-width: 10px">Signer Email</td>
+						<td class="tcell nowrap" th:text="${signUrl.email}"></td>
+					</tr>
+				</tbody>
+			</table>
+			<hr/>
+		</div>
+
+		<button type="submit">Refresh</button>
+	</form>
+</body>
+</html>
