@@ -29,9 +29,9 @@
 					"label": "Create Agreement",
 					"onclick": {
 						"member": "applicationServiceService",
-						"method": "setFormRequest",
+						"method": "sendForm",
 						"params": [
-							"workflowForm","form/"
+							"form/workflowForm"
 						]
 					},
 					"config": {

@@ -27,6 +27,7 @@ import com.davita.ecm.esign.model.AngularCheckbox;
 import com.davita.ecm.esign.model.AngularCombobox;
 import com.davita.ecm.esign.model.AngularContainer;
 import com.davita.ecm.esign.model.AngularDateField;
+import com.davita.ecm.esign.model.AngularHiddenInputField;
 import com.davita.ecm.esign.model.AngularInputField;
 import com.davita.ecm.esign.model.AngularMethodCall;
 import com.davita.ecm.esign.model.AngularNumericField;
@@ -260,22 +261,32 @@ public class EsignController extends BaseEsignController {
 		root.addChild(toolbar);
 		AngularButton createButton = new AngularButton();
 		createButton.setLabel("Create");
-		AngularButton cancelButton = new AngularButton();
-		cancelButton.setLabel("Cancel");
+		createButton.setLabel("Create");
 		AngularMethodCall call = new AngularMethodCall();
 		call.setMember("applicationServiceService");
-		call.setMethod("setFormRequest");
-		call.addParameter("fromWorkflow.json");
+		call.setMethod("postForm");
+		call.addParameter("createNewAgreement");
+		createButton.setOnclick(call);
+		AngularButton cancelButton = new AngularButton();
+		cancelButton.setLabel("Cancel");
+		call = new AngularMethodCall();
+		call.setMember("applicationServiceService");
+		call.setMethod("getStaticForm");
+		call.addParameter("forms/fromWorkflow.json");
 		cancelButton.setOnclick(call);
 		toolbar.addChild(createButton);
 		toolbar.addChild(cancelButton);
+		AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
+		worflowHidden.setName("@@workflowId");
+		worflowHidden.setValue(workflowId);
+		root.addChild(worflowHidden);
 		ObjectNode response = createSuccessJson(null);
 		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
 		return response;
 	}
 
 	@GetMapping(path = "/form/templateForm", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-	public String templateForm(@RequestParam String templateId) throws ApiException, IOException {
+	public JsonNode templateForm(@RequestParam String templateId) throws ApiException, IOException {
 		log.info("templateId: {}", templateId);
 		AngularContainer root = new AngularContainer();
 		root.setClassNames("fixed-width-centered-container");
@@ -396,16 +407,23 @@ public class EsignController extends BaseEsignController {
 		root.addChild(toolbar);
 		AngularButton createButton = new AngularButton();
 		createButton.setLabel("Create");
-		AngularButton cancelButton = new AngularButton();
-		cancelButton.setLabel("Cancel");
 		AngularMethodCall call = new AngularMethodCall();
 		call.setMember("applicationServiceService");
-		call.setMethod("setFormRequest");
-		call.addParameter("fromTemplate.json");
+		call.setMethod("postForm");
+		call.addParameter("createNewAgreement");
+		createButton.setOnclick(call);
+		AngularButton cancelButton = new AngularButton();
+		cancelButton.setLabel("Cancel");
+		call = new AngularMethodCall();
+		call.setMember("applicationServiceService");
+		call.setMethod("getStaticForm");
+		call.addParameter("forms/fromTemplate.json");
 		cancelButton.setOnclick(call);
 		toolbar.addChild(createButton);
 		toolbar.addChild(cancelButton);
-		return mapper.writeValueAsString(root);
+		ObjectNode response = createSuccessJson(null);
+		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
+		return response;
 	}
 
 	@GetMapping(path = "/sendAgreement", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -455,6 +473,12 @@ public class EsignController extends BaseEsignController {
 		AgreementCreationResponse response = agreementsApi.createAgreement(accessToken.getToken(), agreementInfo, null,
 				null);
 		return response.getId();
+	}
+
+	@PostMapping("/createNewAgreement")
+	public JsonNode createNewAgreement(@RequestBody ObjectNode json) {
+		log.info("json={}", json);
+		return createSuccessJson(null);
 	}
 
 }
