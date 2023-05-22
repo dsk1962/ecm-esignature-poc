@@ -278,7 +278,7 @@ public class EsignController extends BaseEsignController {
 		toolbar.addChild(cancelButton);
 		AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
 		worflowHidden.setName("@@workflowId");
-		worflowHidden.setValue(workflowId);
+		worflowHidden.setInitValue(workflowId);
 		root.addChild(worflowHidden);
 		ObjectNode response = createSuccessJson(null);
 		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
@@ -478,7 +478,10 @@ public class EsignController extends BaseEsignController {
 	@PostMapping("/createNewAgreement")
 	public JsonNode createNewAgreement(@RequestBody ObjectNode json) {
 		log.info("json={}", json);
-		return createSuccessJson(null);
+		ObjectNode response = createSuccessJson(null);
+		response.put("errorMessage", "Error Message Test");
+		response.put("infoMessage", "Info Message Test");
+		return response;
 	}
 
 }
