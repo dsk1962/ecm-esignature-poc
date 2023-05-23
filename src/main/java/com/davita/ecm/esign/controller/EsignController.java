@@ -52,6 +52,7 @@ import io.swagger.client.model.agreements.AgreementCreationInfo;
 import io.swagger.client.model.agreements.AgreementCreationInfo.SignatureTypeEnum;
 import io.swagger.client.model.agreements.AgreementCreationInfo.StateEnum;
 import io.swagger.client.model.agreements.AgreementCreationResponse;
+import io.swagger.client.model.agreements.AgreementInfo;
 import io.swagger.client.model.agreements.FileInfo;
 import io.swagger.client.model.agreements.MergefieldInfo;
 import io.swagger.client.model.agreements.ParticipantSetInfo;
@@ -77,8 +78,17 @@ public class EsignController extends BaseEsignController {
 	public static final String DOC_PREFIX = "$DOC$";
 	public static final String PARTICIPANT_PREFIX = "$PCNT$";
 
+	private static final String APPLICATION_SERVICE_TS_NAME = "applicationServiceService";
+	private static final String FULLWIDTH_CENTERED_CONTAINER_CSS_NAME = "full-width-centered-container";
+
 	public static final String FORM_DEFINITION = "formDefinition";
 	public static final String FORM_REQUEST = "formRequest";
+	public static final String WORKFLOW_ID_ENTRY = "$$workflowId$$";
+	public static final String EXTERNAL_GROUP_ID_ENTRY = "$$externalGroupId$$";
+	public static final String EXTERNAL_ID_ENTRY = "$$agreement_externalId$$";
+	public static final String AGREEMENT_NAME_ENTRY = "$$agreement_name$$";
+
+	public static final String X_USER = "email:dmitry.kuvshinov@davita.com";
 
 	@PostConstruct
 	public void postConstruct() {
@@ -157,8 +167,8 @@ public class EsignController extends BaseEsignController {
 	@GetMapping(path = "/staticForm", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public JsonNode getStaticForm(@RequestParam String formPath) {
 		try {
-			ObjectNode response = createSuccessJson(null);
-			response.set(FORM_DEFINITION,objectMapper.readTree(ResourceUtils.getFile("classpath:static/" + formPath)));
+			ObjectNode response = createSuccessJson();
+			response.set(FORM_DEFINITION, objectMapper.readTree(ResourceUtils.getFile("classpath:static/" + formPath)));
 			return response;
 		} catch (FileNotFoundException e) {
 			return createErrorJson("Form: " + formPath + " doesn't exist");
@@ -172,14 +182,14 @@ public class EsignController extends BaseEsignController {
 		AngularContainer root = new AngularContainer();
 		root.setClassNames("fixed-width-centered-container");
 		AngularContainer body = new AngularContainer();
-		body.setClassNames("full-width-centered-container");
+		body.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
 		root.addChild(body);
 
 		WorkflowsApiExtension workflowsApi = new WorkflowsApiExtension(getApiClient());
 		Workflow workflow = workflowsApi.getWorkflow(accessToken.getToken(), workflowId, null, null);
 		AngularContainer container = new AngularContainer();
 		container.setLayout("horizontal");
-		container.setClassNames("full-width-centered-container");
+		container.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
 		container.setHtml("<h2>" + workflow.getDisplayName() + "</h2>");
 		body.addChild(container);
 		// populate form fields
@@ -254,33 +264,45 @@ public class EsignController extends BaseEsignController {
 				body.addChild(aField);
 			});
 		}
+		container = new AngularContainer();
+		container.setLayout("horizontal");
+		container.setClassNames("full-width-container");
+		container.setHtml("<h3>Agreement info</h3>");
+		body.addChild(container);
+		AngularTextField aField = new AngularTextField();
+		aField.setLabel("External ID");
+		aField.setName(EXTERNAL_ID_ENTRY);
+		body.addChild(aField);
+		aField = new AngularTextField();
+		aField.setLabel("Name");
+		aField.setName(AGREEMENT_NAME_ENTRY);
+		body.addChild(aField);
 
 		AngularContainer toolbar = new AngularContainer();
 		toolbar.setLayout("horizontal");
-		toolbar.setClassNames("full-width-centered-container dynamic-toolbar");
+		toolbar.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME + " dynamic-toolbar");
 		root.addChild(toolbar);
 		AngularButton createButton = new AngularButton();
 		createButton.setLabel("Create");
-		createButton.setLabel("Create");
 		AngularMethodCall call = new AngularMethodCall();
-		call.setMember("applicationServiceService");
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
 		call.setMethod("postForm");
-		call.addParameter("createNewAgreement");
+		call.addParameter("createWorkflowAgreement");
 		createButton.setOnclick(call);
 		AngularButton cancelButton = new AngularButton();
 		cancelButton.setLabel("Cancel");
 		call = new AngularMethodCall();
-		call.setMember("applicationServiceService");
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
 		call.setMethod("getStaticForm");
 		call.addParameter("forms/fromWorkflow.json");
 		cancelButton.setOnclick(call);
 		toolbar.addChild(createButton);
 		toolbar.addChild(cancelButton);
 		AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
-		worflowHidden.setName("@@workflowId");
+		worflowHidden.setName(WORKFLOW_ID_ENTRY);
 		worflowHidden.setInitValue(workflowId);
 		root.addChild(worflowHidden);
-		ObjectNode response = createSuccessJson(null);
+		ObjectNode response = createSuccessJson();
 		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
 		return response;
 	}
@@ -291,12 +313,12 @@ public class EsignController extends BaseEsignController {
 		AngularContainer root = new AngularContainer();
 		root.setClassNames("fixed-width-centered-container");
 		AngularContainer body = new AngularContainer();
-		body.setClassNames("full-width-centered-container");
+		body.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
 		root.addChild(body);
 
 		AngularContainer container = new AngularContainer();
 		container.setLayout("horizontal");
-		container.setClassNames("full-width-centered-container");
+		container.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
 		container.setHtml("<h2>Template Data</h2>");
 		body.addChild(container);
 		// populate form fields
@@ -408,20 +430,20 @@ public class EsignController extends BaseEsignController {
 		AngularButton createButton = new AngularButton();
 		createButton.setLabel("Create");
 		AngularMethodCall call = new AngularMethodCall();
-		call.setMember("applicationServiceService");
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
 		call.setMethod("postForm");
-		call.addParameter("createNewAgreement");
+		call.addParameter("createTemplateAgreement");
 		createButton.setOnclick(call);
 		AngularButton cancelButton = new AngularButton();
 		cancelButton.setLabel("Cancel");
 		call = new AngularMethodCall();
-		call.setMember("applicationServiceService");
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
 		call.setMethod("getStaticForm");
 		call.addParameter("forms/fromTemplate.json");
 		cancelButton.setOnclick(call);
 		toolbar.addChild(createButton);
 		toolbar.addChild(cancelButton);
-		ObjectNode response = createSuccessJson(null);
+		ObjectNode response = createSuccessJson();
 		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
 		return response;
 	}
@@ -475,10 +497,90 @@ public class EsignController extends BaseEsignController {
 		return response.getId();
 	}
 
-	@PostMapping("/createNewAgreement")
-	public JsonNode createNewAgreement(@RequestBody ObjectNode json) {
+	@PostMapping("/createWorkflowAgreement")
+	public JsonNode createWorkflowAgreement(@RequestBody ObjectNode json) {
 		log.info("json={}", json);
-		ObjectNode response = createSuccessJson(null);
+		try {
+			String workflowId = json.has(WORKFLOW_ID_ENTRY) ? json.get(WORKFLOW_ID_ENTRY).asText() : null;
+			if (!StringUtils.hasText(workflowId))
+				return createErrorJson("No workflow id found in input data");
+			WorkflowsApiExtension workflowsApi = new WorkflowsApiExtension(getApiClient());
+			Workflow workflow = workflowsApi.getWorkflow(accessToken.getToken(), workflowId, null, null);
+
+			AgreementCreationInfo agreementInfo = new AgreementCreationInfo();
+			agreementInfo.setName(workflow.getAgreementNameInfo().getDefaultValue());
+			agreementInfo.setSignatureType(SignatureTypeEnum.ESIGN);
+			agreementInfo.setState(StateEnum.IN_PROCESS);
+			agreementInfo.setMessage(workflow.getMessageInfo().getDefaultValue());
+			agreementInfo.setWorkflowId(workflow.getId());
+
+			workflow.getFileInfos().forEach(fInfo -> {
+				if (json.has(DOC_PREFIX + fInfo.getName())) {
+					String docId = json.get(DOC_PREFIX + fInfo.getName()).asText();
+					if (StringUtils.hasText(docId)) {
+						FileInfo fileInfo = new FileInfo();
+						fileInfo.setLibraryDocumentId(docId);
+						fileInfo.setLabel(fInfo.getLabel());
+						agreementInfo.addFileInfosItem(fileInfo);
+					}
+				}
+			});
+
+			workflow.getMergeFieldsInfo().forEach(mfInfo -> {
+				if (json.has(FIELD_PREFIX + mfInfo.getFieldName())) {
+					String value = json.get(FIELD_PREFIX + mfInfo.getFieldName()).asText();
+					if (StringUtils.hasText(value)) {
+						MergefieldInfo info = new MergefieldInfo();
+						info.setFieldName(mfInfo.getFieldName());
+						info.setDefaultValue(value);
+						agreementInfo.addMergeFieldInfoItem(info);
+					}
+				}
+			});
+			int order = 1;
+			for (RecipientsListInfo rInfo : workflow.getRecipientsListInfo()) {
+				if (json.has(PARTICIPANT_PREFIX + rInfo.getName())) {
+					String email = json.get(PARTICIPANT_PREFIX + rInfo.getName()).asText();
+					if (StringUtils.hasText(email)) {
+						ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
+						participantSetInfo.setOrder(order++);
+						// do not set name. Thos may cause "Recipient set is not enabled" error
+						// participantSetInfo.setName(rInfo.getName());
+						participantSetInfo.setLabel(rInfo.getLabel());
+						participantSetInfo.setRole(ParticipantSetInfo.RoleEnum.fromValue(rInfo.getRole()));
+						ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
+						participantSetMemberInfo.setEmail(email);
+						participantSetInfo.addMemberInfosItem(participantSetMemberInfo);
+						agreementInfo.addParticipantSetsInfoItem(participantSetInfo);
+					}
+				}
+			}
+
+			PostSignOption option = new PostSignOption();
+			option.setRedirectDelay(15);
+			option.setRedirectUrl("https://www.davita.com");
+
+			agreementInfo.setPostSignOption(option);
+			AgreementsApi agreementsApi = new AgreementsApi(getApiClient());
+			AgreementCreationResponse agreementCreationResponse = agreementsApi.createAgreement(accessToken.getToken(),
+					agreementInfo, null, null);
+			log.info("Agreement created. Agreement Id: {}", agreementCreationResponse.getId());
+			AgreementInfo aInfo = agreementsApi.getAgreementInfo(accessToken.getToken(),
+					agreementCreationResponse.getId(), null, null, null);
+			return createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
+		} catch (ApiException e) {
+			log.error("Create agreement from workflow failed.",e);
+			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+		} catch (IOException e) {
+			log.error("Create agreement from workflow failed.",e);
+			return createErrorJson(e.getMessage());
+		}
+	}
+
+	@PostMapping("/createTemplateAgreement")
+	public JsonNode createTemplateAgreement(@RequestBody ObjectNode json) {
+		log.info("json={}", json);
+		ObjectNode response = createSuccessJson();
 		response.put("errorMessage", "Error Message Test");
 		response.put("infoMessage", "Info Message Test");
 		return response;

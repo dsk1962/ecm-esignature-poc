@@ -100,6 +100,18 @@ public class BaseEsignController {
 		root.set("result", result != null ? result:objectMapper.createObjectNode());
 		return root;
 	}
+	protected ObjectNode createSuccessJson() {
+		ObjectNode root = objectMapper.createObjectNode();
+		root.put("success", true);
+		root.set("result", objectMapper.createObjectNode());
+		return root;
+	}
+	protected ObjectNode createSuccessJson(String result) {
+		ObjectNode root = objectMapper.createObjectNode();
+		root.put("success", true);
+		root.put("result", result);
+		return root;
+	}
 	protected ObjectNode createErrorJson(String errorMessage) {
 		ObjectNode root = objectMapper.createObjectNode();
 		root.put("success", false);
