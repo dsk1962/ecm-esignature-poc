@@ -33,6 +33,7 @@ import com.davita.ecm.esign.model.AngularMethodCall;
 import com.davita.ecm.esign.model.AngularNumericField;
 import com.davita.ecm.esign.model.AngularTextField;
 import com.davita.ecm.esign.model.Option;
+import com.davita.ecm.esign.model.Utilities;
 import com.davita.ecm.esign.model.extension.librarydocument.Field;
 import com.davita.ecm.esign.model.extension.librarydocument.FieldList;
 import com.davita.ecm.esign.model.extension.workflow.MergeFieldsInfo;
@@ -53,6 +54,7 @@ import io.swagger.client.model.agreements.AgreementCreationInfo.SignatureTypeEnu
 import io.swagger.client.model.agreements.AgreementCreationInfo.StateEnum;
 import io.swagger.client.model.agreements.AgreementCreationResponse;
 import io.swagger.client.model.agreements.AgreementInfo;
+import io.swagger.client.model.agreements.ExternalId;
 import io.swagger.client.model.agreements.FileInfo;
 import io.swagger.client.model.agreements.MergefieldInfo;
 import io.swagger.client.model.agreements.ParticipantSetInfo;
@@ -263,6 +265,7 @@ public class EsignController extends BaseEsignController {
 				aField.setPatternError("Invalid email");
 				body.addChild(aField);
 			});
+			
 		}
 		container = new AngularContainer();
 		container.setLayout("horizontal");
@@ -515,45 +518,53 @@ public class EsignController extends BaseEsignController {
 			agreementInfo.setWorkflowId(workflow.getId());
 
 			workflow.getFileInfos().forEach(fInfo -> {
-				if (json.has(DOC_PREFIX + fInfo.getName())) {
-					String docId = json.get(DOC_PREFIX + fInfo.getName()).asText();
-					if (StringUtils.hasText(docId)) {
-						FileInfo fileInfo = new FileInfo();
-						fileInfo.setLibraryDocumentId(docId);
-						fileInfo.setLabel(fInfo.getLabel());
-						agreementInfo.addFileInfosItem(fileInfo);
-					}
+				String docId = Utilities.getStringValue(json, DOC_PREFIX + fInfo.getName());
+				if (StringUtils.hasText(docId)) {
+					FileInfo fileInfo = new FileInfo();
+					fileInfo.setLibraryDocumentId(docId);
+					fileInfo.setLabel(fInfo.getLabel());
+					agreementInfo.addFileInfosItem(fileInfo);
 				}
 			});
 
 			workflow.getMergeFieldsInfo().forEach(mfInfo -> {
-				if (json.has(FIELD_PREFIX + mfInfo.getFieldName())) {
-					String value = json.get(FIELD_PREFIX + mfInfo.getFieldName()).asText();
-					if (StringUtils.hasText(value)) {
-						MergefieldInfo info = new MergefieldInfo();
-						info.setFieldName(mfInfo.getFieldName());
-						info.setDefaultValue(value);
-						agreementInfo.addMergeFieldInfoItem(info);
-					}
+				String value = Utilities.getStringValue(json, FIELD_PREFIX + mfInfo.getFieldName());
+				if (StringUtils.hasText(value)) {
+					MergefieldInfo info = new MergefieldInfo();
+					info.setFieldName(mfInfo.getFieldName());
+					info.setDefaultValue(value);
+					agreementInfo.addMergeFieldInfoItem(info);
 				}
 			});
+			MergefieldInfo info = new MergefieldInfo();
+			info.setFieldName("PatientName");
+			info.setDefaultValue("Test Name");
+			agreementInfo.addMergeFieldInfoItem(info);
 			int order = 1;
 			for (RecipientsListInfo rInfo : workflow.getRecipientsListInfo()) {
-				if (json.has(PARTICIPANT_PREFIX + rInfo.getName())) {
-					String email = json.get(PARTICIPANT_PREFIX + rInfo.getName()).asText();
-					if (StringUtils.hasText(email)) {
-						ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
-						participantSetInfo.setOrder(order++);
-						// do not set name. Thos may cause "Recipient set is not enabled" error
-						// participantSetInfo.setName(rInfo.getName());
-						participantSetInfo.setLabel(rInfo.getLabel());
-						participantSetInfo.setRole(ParticipantSetInfo.RoleEnum.fromValue(rInfo.getRole()));
-						ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
-						participantSetMemberInfo.setEmail(email);
-						participantSetInfo.addMemberInfosItem(participantSetMemberInfo);
-						agreementInfo.addParticipantSetsInfoItem(participantSetInfo);
-					}
+				String email = Utilities.getStringValue(json, PARTICIPANT_PREFIX + rInfo.getName());
+				if (StringUtils.hasText(email)) {
+					ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
+					participantSetInfo.setOrder(order++);
+					// do not set name. Thos may cause "Recipient set is not enabled" error
+					// participantSetInfo.setName(rInfo.getName());
+					participantSetInfo.setLabel(rInfo.getLabel());
+					participantSetInfo.setRole(ParticipantSetInfo.RoleEnum.fromValue(rInfo.getRole()));
+					ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
+					participantSetMemberInfo.setEmail(email);
+					participantSetInfo.addMemberInfosItem(participantSetMemberInfo);
+					agreementInfo.addParticipantSetsInfoItem(participantSetInfo);
 				}
+			}
+			String sValue = Utilities.getStringValue(json, EXTERNAL_ID_ENTRY);
+			if (StringUtils.hasText(sValue)) {
+				ExternalId externalId = new ExternalId();
+				externalId.setId(sValue);
+				agreementInfo.setExternalId(externalId);
+			}
+			sValue = Utilities.getStringValue(json, AGREEMENT_NAME_ENTRY);
+			if (StringUtils.hasText(sValue)) {
+				agreementInfo.setName(sValue);
 			}
 
 			PostSignOption option = new PostSignOption();
@@ -567,12 +578,14 @@ public class EsignController extends BaseEsignController {
 			log.info("Agreement created. Agreement Id: {}", agreementCreationResponse.getId());
 			AgreementInfo aInfo = agreementsApi.getAgreementInfo(accessToken.getToken(),
 					agreementCreationResponse.getId(), null, null, null);
-			return createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
+			ObjectNode result =  createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
+			result.put("infoMessage",objectMapper.writeValueAsString(aInfo));
+			return result;
 		} catch (ApiException e) {
-			log.error("Create agreement from workflow failed.",e);
+			log.error("Create agreement from workflow failed.", e);
 			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
 		} catch (IOException e) {
-			log.error("Create agreement from workflow failed.",e);
+			log.error("Create agreement from workflow failed.", e);
 			return createErrorJson(e.getMessage());
 		}
 	}
