@@ -58,6 +58,7 @@ import io.swagger.client.model.agreements.ExternalId;
 import io.swagger.client.model.agreements.FileInfo;
 import io.swagger.client.model.agreements.MergefieldInfo;
 import io.swagger.client.model.agreements.ParticipantSetInfo;
+import io.swagger.client.model.agreements.ParticipantSetInfo.RoleEnum;
 import io.swagger.client.model.agreements.ParticipantSetMemberInfo;
 import io.swagger.client.model.agreements.PostSignOption;
 import io.swagger.client.model.libraryDocuments.LibraryDocument;
@@ -86,6 +87,7 @@ public class EsignController extends BaseEsignController {
 	public static final String FORM_DEFINITION = "formDefinition";
 	public static final String FORM_REQUEST = "formRequest";
 	public static final String WORKFLOW_ID_ENTRY = "$$workflowId$$";
+	public static final String TEMPLATE_ID_ENTRY = "$$templateId$$";
 	public static final String EXTERNAL_GROUP_ID_ENTRY = "$$externalGroupId$$";
 	public static final String EXTERNAL_ID_ENTRY = "$$agreement_externalId$$";
 	public static final String AGREEMENT_NAME_ENTRY = "$$agreement_name$$";
@@ -265,7 +267,7 @@ public class EsignController extends BaseEsignController {
 				aField.setPatternError("Invalid email");
 				body.addChild(aField);
 			});
-			
+
 		}
 		container = new AngularContainer();
 		container.setLayout("horizontal");
@@ -417,15 +419,40 @@ public class EsignController extends BaseEsignController {
 			container.setHtml("<h3>Participnat Emails</h3>");
 			body.addChild(container);
 			pList.forEach(recipient -> {
+				AngularContainer pContainer = new AngularContainer();
+				pContainer.setLayout("horizontal");
+				pContainer.setClassNames("full-width-container");
 				AngularTextField aField = new AngularTextField();
 				aField.setLabel(recipient);
+				aField.setClassNames("dynamic-flex-1");
 				aField.setName(PARTICIPANT_PREFIX + recipient);
 				aField.setPattern("^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$");
 				aField.setPatternError("Invalid email");
-				body.addChild(aField);
+				pContainer.addChild(aField);
+				AngularNumericField nField = new AngularNumericField();
+				nField.setLabel("Order");
+				nField.setStyle("max-width:200px;margin-left:10px;");
+				nField.setLabelStyle("min-width:60px");
+				nField.setName(PARTICIPANT_PREFIX + recipient + "-order");
+				pContainer.addChild(nField);
+				body.addChild(pContainer);
 			});
 
 		}
+		container = new AngularContainer();
+		container.setLayout("horizontal");
+		container.setClassNames("full-width-container");
+		container.setHtml("<h3>Agreement info</h3>");
+		body.addChild(container);
+		AngularTextField aField = new AngularTextField();
+		aField.setLabel("External ID");
+		aField.setName(EXTERNAL_ID_ENTRY);
+		body.addChild(aField);
+		aField = new AngularTextField();
+		aField.setLabel("Name");
+		aField.setName(AGREEMENT_NAME_ENTRY);
+		body.addChild(aField);
+
 		AngularContainer toolbar = new AngularContainer();
 		toolbar.setLayout("horizontal");
 		toolbar.setClassNames("full-width-centered-container dynamic-toolbar");
@@ -446,6 +473,10 @@ public class EsignController extends BaseEsignController {
 		cancelButton.setOnclick(call);
 		toolbar.addChild(createButton);
 		toolbar.addChild(cancelButton);
+		AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
+		worflowHidden.setName(TEMPLATE_ID_ENTRY);
+		worflowHidden.setInitValue(templateId);
+		root.addChild(worflowHidden);
 		ObjectNode response = createSuccessJson();
 		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
 		return response;
@@ -578,8 +609,8 @@ public class EsignController extends BaseEsignController {
 			log.info("Agreement created. Agreement Id: {}", agreementCreationResponse.getId());
 			AgreementInfo aInfo = agreementsApi.getAgreementInfo(accessToken.getToken(),
 					agreementCreationResponse.getId(), null, null, null);
-			ObjectNode result =  createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
-			result.put("infoMessage",objectMapper.writeValueAsString(aInfo));
+			ObjectNode result = createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
+			result.put("infoMessage", objectMapper.writeValueAsString(aInfo));
 			return result;
 		} catch (ApiException e) {
 			log.error("Create agreement from workflow failed.", e);
@@ -593,10 +624,80 @@ public class EsignController extends BaseEsignController {
 	@PostMapping("/createTemplateAgreement")
 	public JsonNode createTemplateAgreement(@RequestBody ObjectNode json) {
 		log.info("json={}", json);
-		ObjectNode response = createSuccessJson();
-		response.put("errorMessage", "Error Message Test");
-		response.put("infoMessage", "Info Message Test");
-		return response;
+		try {
+			String templateId = Utilities.getStringValue(json, TEMPLATE_ID_ENTRY);
+			if (!StringUtils.hasText(templateId))
+				return createErrorJson("No template id found in input data");
+			LibraryDocumentsApiExtension libApi = new LibraryDocumentsApiExtension(getApiClient());
+			FieldList list = libApi.getFormFields(accessToken.getToken(), templateId, null, null, null);
+
+			AgreementCreationInfo agreementInfo = new AgreementCreationInfo();
+			agreementInfo.setSignatureType(SignatureTypeEnum.ESIGN);
+			agreementInfo.setState(StateEnum.IN_PROCESS);
+
+			FileInfo fileInfo = new FileInfo();
+			fileInfo.setLibraryDocumentId(templateId);
+			agreementInfo.addFileInfosItem(fileInfo);
+
+			list.getFields().forEach(mfInfo -> {
+				String value = Utilities.getStringValue(json, FIELD_PREFIX + mfInfo.getName());
+				if (StringUtils.hasText(value)) {
+					MergefieldInfo info = new MergefieldInfo();
+					info.setFieldName(mfInfo.getName());
+					info.setDefaultValue(value);
+					agreementInfo.addMergeFieldInfoItem(info);
+				}
+			});
+			json.fieldNames().forEachRemaining(name -> {
+				if( name.startsWith(PARTICIPANT_PREFIX) && !name.endsWith("-order")) {
+					String email = Utilities.getStringValue(json, name);
+					if( StringUtils.hasText(email)) {
+						String sOrder = Utilities.getStringValue(json, name+"-order");
+						int order = StringUtils.hasText(sOrder) ? Integer.parseInt(sOrder) : 1;
+						ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
+						participantSetInfo.setOrder(order);
+						participantSetInfo.setRole(Utilities.getTemplatePrticipantRole(list, name.substring(PARTICIPANT_PREFIX.length())));
+						participantSetInfo.setName(name.substring(PARTICIPANT_PREFIX.length()));
+						ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
+						participantSetMemberInfo.setEmail(email);
+						participantSetInfo.addMemberInfosItem(participantSetMemberInfo);
+						agreementInfo.addParticipantSetsInfoItem(participantSetInfo);
+					}
+				}
+			});
+
+			String sValue = Utilities.getStringValue(json, EXTERNAL_ID_ENTRY);
+			if (StringUtils.hasText(sValue)) {
+				ExternalId externalId = new ExternalId();
+				externalId.setId(sValue);
+				agreementInfo.setExternalId(externalId);
+			}
+			sValue = Utilities.getStringValue(json, AGREEMENT_NAME_ENTRY);
+			if (StringUtils.hasText(sValue)) {
+				agreementInfo.setName(sValue);
+			}
+
+			PostSignOption option = new PostSignOption();
+			option.setRedirectDelay(15);
+			option.setRedirectUrl("https://www.davita.com");
+
+			agreementInfo.setPostSignOption(option);
+			AgreementsApi agreementsApi = new AgreementsApi(getApiClient());
+			AgreementCreationResponse agreementCreationResponse = agreementsApi.createAgreement(accessToken.getToken(),
+					agreementInfo, null, null);
+			log.info("Agreement created. Agreement Id: {}", agreementCreationResponse.getId());
+			AgreementInfo aInfo = agreementsApi.getAgreementInfo(accessToken.getToken(),
+					agreementCreationResponse.getId(), null, null, null);
+			ObjectNode result = createSuccessJson(objectMapper.convertValue(aInfo, JsonNode.class));
+			result.put("infoMessage", objectMapper.writeValueAsString(aInfo));
+			return result;
+		} catch (ApiException e) {
+			log.error("Create agreement from workflow failed.", e);
+			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+		} catch (IOException e) {
+			log.error("Create agreement from workflow failed.", e);
+			return createErrorJson(e.getMessage());
+		}
 	}
 
 }

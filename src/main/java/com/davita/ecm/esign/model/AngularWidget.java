@@ -15,6 +15,7 @@ public class AngularWidget {
 	private String label;
 	private String name;
 	private String style;
+	private String labelStyle;
 	private String classNames;
 	private String subType;
 	private Object config;
