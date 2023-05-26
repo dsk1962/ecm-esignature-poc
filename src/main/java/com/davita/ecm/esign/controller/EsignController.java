@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,11 +59,11 @@ import io.swagger.client.model.agreements.ExternalId;
 import io.swagger.client.model.agreements.FileInfo;
 import io.swagger.client.model.agreements.MergefieldInfo;
 import io.swagger.client.model.agreements.ParticipantSetInfo;
-import io.swagger.client.model.agreements.ParticipantSetInfo.RoleEnum;
 import io.swagger.client.model.agreements.ParticipantSetMemberInfo;
 import io.swagger.client.model.agreements.PostSignOption;
 import io.swagger.client.model.libraryDocuments.LibraryDocument;
 import io.swagger.client.model.libraryDocuments.LibraryDocument.StatusEnum;
+import io.swagger.client.model.libraryDocuments.LibraryDocumentCreationInfoV6;
 import io.swagger.client.model.workflows.UserWorkflow;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -83,6 +84,8 @@ public class EsignController extends BaseEsignController {
 
 	private static final String APPLICATION_SERVICE_TS_NAME = "applicationServiceService";
 	private static final String FULLWIDTH_CENTERED_CONTAINER_CSS_NAME = "full-width-centered-container";
+
+	private static final String EMAIL_PATTERN = "^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$";
 
 	public static final String FORM_DEFINITION = "formDefinition";
 	public static final String FORM_REQUEST = "formRequest";
@@ -181,6 +184,235 @@ public class EsignController extends BaseEsignController {
 		}
 	}
 
+	@GetMapping(path = "/form/workflowFormDocuments", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public JsonNode workflowFormDocuments(@RequestParam String workflowId) throws ApiException, IOException {
+		AngularContainer root = new AngularContainer();
+		root.setClassNames("fixed-width-centered-container");
+		AngularContainer body = new AngularContainer();
+		body.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
+		root.addChild(body);
+		WorkflowsApiExtension workflowsApi = new WorkflowsApiExtension(getApiClient());
+		Workflow workflow = workflowsApi.getWorkflow(accessToken.getToken(), workflowId, null, null);
+		AngularContainer container = new AngularContainer();
+		container.setLayout("horizontal");
+		container.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
+		container.setHtml("<h2>Workflow: " + workflow.getDisplayName() + "</h2>");
+		body.addChild(container);
+		LibraryDocumentsApi libApi = new LibraryDocumentsApi(getApiClient());
+		List<LibraryDocument> libraryDocuments = libApi
+				.getLibraryDocuments(accessToken.getToken(), null, null, false, null, null).getLibraryDocumentList()
+				.stream().filter(libDoc -> libDoc.getStatus().equals(StatusEnum.ACTIVE)).collect(Collectors.toList());
+		List<Option> allDocuments = new ArrayList<>();
+		if (!CollectionUtils.isEmpty(libraryDocuments))
+			libraryDocuments.forEach(doc -> allDocuments.add(new Option(doc.getName(), doc.getId())));
+
+		List<com.davita.ecm.esign.model.extension.workflow.FileInfo> flist = workflow.getFileInfos();
+		if (!CollectionUtils.isEmpty(libraryDocuments)) {
+			container = new AngularContainer();
+			container.setLayout("horizontal");
+			container.setClassNames("full-width-container");
+			container.setHtml("<h3>Documents</h3>");
+			body.addChild(container);
+			flist.forEach(file -> {
+				List<Option> options = new ArrayList<>();
+				AngularCombobox aField = new AngularCombobox();
+				aField.setRequired(file.isRequired());
+				if (!aField.isRequired())
+					options.add(new Option("", ""));
+				aField.setLabel(file.getLabel());
+				aField.setName(DOC_PREFIX + file.getName());
+				if (!CollectionUtils.isEmpty(file.getWorkflowLibraryDocumentSelectorList())) {
+					file.getWorkflowLibraryDocumentSelectorList()
+							.forEach(doc -> options.add(new Option(doc.getLabel(), doc.getWorkflowLibDoc())));
+					aField.setOptions(options);
+				} else
+					options.addAll(allDocuments);
+				aField.setOptions(options);
+				aField.setInitValue(aField.getOptions().get(0).getValue());
+				body.addChild(aField);
+			});
+		}
+		AngularContainer toolbar = new AngularContainer();
+		toolbar.setLayout("horizontal");
+		toolbar.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME + " dynamic-toolbar");
+		root.addChild(toolbar);
+		AngularButton createButton = new AngularButton();
+		createButton.setLabel("Next");
+		AngularMethodCall call = new AngularMethodCall();
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
+		call.setMethod("postForm");
+		call.addParameter("form/workflowFormFields");
+		createButton.setOnclick(call);
+		AngularButton cancelButton = new AngularButton();
+		cancelButton.setLabel("Cancel");
+		call = new AngularMethodCall();
+		call.setMember(APPLICATION_SERVICE_TS_NAME);
+		call.setMethod("getStaticForm");
+		call.addParameter("forms/fromWorkflow.json");
+		cancelButton.setOnclick(call);
+		toolbar.addChild(createButton);
+		toolbar.addChild(cancelButton);
+		AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
+		worflowHidden.setName(WORKFLOW_ID_ENTRY);
+		worflowHidden.setInitValue(workflowId);
+		root.addChild(worflowHidden);
+		ObjectNode response = createSuccessJson();
+		response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
+		return response;
+	}
+
+	@PostMapping(path = "/form/workflowFormFields", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public JsonNode workflowFormFields(@RequestBody ObjectNode json) throws ApiException, IOException {
+		log.info("json={}", json);
+		try {
+			AngularContainer root = new AngularContainer();
+			root.setClassNames("fixed-width-centered-container");
+			AngularContainer body = new AngularContainer();
+			body.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
+			root.addChild(body);
+
+			String workflowId = json.has(WORKFLOW_ID_ENTRY) ? json.get(WORKFLOW_ID_ENTRY).asText() : null;
+			if (!StringUtils.hasText(workflowId))
+				return createErrorJson("No workflow id found in input data");
+			WorkflowsApiExtension workflowsApi = new WorkflowsApiExtension(getApiClient());
+			Workflow workflow = workflowsApi.getWorkflow(accessToken.getToken(), workflowId, null, null);
+
+			HashMap<String, String> docs = new HashMap<>(10);
+			workflow.getFileInfos().forEach(fInfo -> {
+				String docId = Utilities.getStringValue(json, DOC_PREFIX + fInfo.getName());
+				if (StringUtils.hasText(docId)) {
+					docs.put(DOC_PREFIX + fInfo.getName(), docId);
+				}
+			});
+
+			AngularContainer container = new AngularContainer();
+			container.setLayout("horizontal");
+			container.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
+			container.setHtml("<h2>Workflow: " + workflow.getDisplayName() + "</h2>");
+			body.addChild(container);
+
+			HashSet<String> fieldNames = new HashSet<>();
+
+			// populate form fields
+			List<MergeFieldsInfo> list = workflow.getMergeFieldsInfo();
+			if (!CollectionUtils.isEmpty(list)) {
+				container = new AngularContainer();
+				container.setLayout("horizontal");
+				container.setClassNames("full-width-container");
+				container.setHtml("<h3>Workflow Parameters</h3>");
+				body.addChild(container);
+				list.forEach(field -> {
+					if (!fieldNames.contains(field.getFieldName())) {
+						fieldNames.add(field.getFieldName());
+						AngularTextField aField = new AngularTextField();
+						aField.setLabel(field.getDisplayName());
+						aField.setName(FIELD_PREFIX + field.getFieldName());
+						aField.setInitValue(field.getDefaultValue());
+						aField.setRequired(field.isRequired());
+						if (!field.isEditable())
+							aField.setReadonly(true);
+						body.addChild(aField);
+					}
+				});
+			}
+			LibraryDocumentsApiExtension libApi = new LibraryDocumentsApiExtension(getApiClient());
+			for (String templateId : docs.values()) {
+				LibraryDocumentCreationInfoV6 info = libApi.getLibraryDocumentInfo(accessToken.getToken(), templateId,
+						null, null, null);
+				FieldList flist = libApi.getFormFields(accessToken.getToken(), templateId, null, null, null);
+				if (!CollectionUtils.isEmpty(flist.getFields())) {
+					AngularContainer tContainer = new AngularContainer();
+					tContainer.setLayout("horizontal");
+					tContainer.setClassNames("full-width-container");
+					tContainer.setHtml("<h3>" + info.getName() + " Parameters</h3>");
+					body.addChild(tContainer);
+					flist.getFields().forEach(field -> {
+						if (!fieldNames.contains(field.getName())) {
+							fieldNames.add(field.getName());
+							AngularInputField aField = createAngularField(field);
+							if (aField != null)
+								body.addChild(aField);
+						}
+					});
+				}
+			}
+			List<RecipientsListInfo> rlist = workflow.getRecipientsListInfo();
+			if (!CollectionUtils.isEmpty(rlist)) {
+				container = new AngularContainer();
+				container.setLayout("horizontal");
+				container.setClassNames("full-width-container");
+				container.setHtml("<h3>Participnat Emails</h3>");
+				body.addChild(container);
+				rlist.forEach(recipient -> {
+					AngularTextField aField = new AngularTextField();
+					aField.setLabel(recipient.getLabel());
+					aField.setName(PARTICIPANT_PREFIX + recipient.getName());
+					aField.setInitValue(recipient.getDefaultValue());
+					aField.setPattern(EMAIL_PATTERN);
+					aField.setPatternError("Invalid email");
+					body.addChild(aField);
+				});
+
+			}
+			container = new AngularContainer();
+			container.setLayout("horizontal");
+			container.setClassNames("full-width-container");
+			container.setHtml("<h3>Agreement info</h3>");
+			body.addChild(container);
+			AngularTextField aField = new AngularTextField();
+			aField.setLabel("External ID");
+			aField.setName(EXTERNAL_ID_ENTRY);
+			body.addChild(aField);
+			aField = new AngularTextField();
+			aField.setLabel("Name");
+			aField.setName(AGREEMENT_NAME_ENTRY);
+			body.addChild(aField);
+
+			AngularContainer toolbar = new AngularContainer();
+			toolbar.setLayout("horizontal");
+			toolbar.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME + " dynamic-toolbar");
+			root.addChild(toolbar);
+			AngularButton createButton = new AngularButton();
+			createButton.setLabel("Next");
+			AngularMethodCall call = new AngularMethodCall();
+			call.setMember(APPLICATION_SERVICE_TS_NAME);
+			call.setMethod("postForm");
+			call.addParameter("createWorkflowAgreement");
+			createButton.setOnclick(call);
+			AngularButton cancelButton = new AngularButton();
+			cancelButton.setLabel("Cancel");
+			call = new AngularMethodCall();
+			call.setMember(APPLICATION_SERVICE_TS_NAME);
+			call.setMethod("getStaticForm");
+			call.addParameter("forms/fromWorkflow.json");
+			cancelButton.setOnclick(call);
+			toolbar.addChild(createButton);
+			toolbar.addChild(cancelButton);
+			// add workflowid as hidden variable
+			AngularHiddenInputField worflowHidden = new AngularHiddenInputField();
+			worflowHidden.setName(WORKFLOW_ID_ENTRY);
+			worflowHidden.setInitValue(workflowId);
+			root.addChild(worflowHidden);
+			// add document ids as hidden variables
+			docs.entrySet().forEach(entry -> {
+				AngularHiddenInputField docHidden = new AngularHiddenInputField();
+				docHidden.setName(entry.getKey());
+				docHidden.setInitValue(entry.getValue());
+				root.addChild(docHidden);
+			});
+			ObjectNode response = createSuccessJson();
+			response.set(FORM_DEFINITION, objectMapper.valueToTree(root));
+			return response;
+		} catch (ApiException e) {
+			log.error("Create field form failed.", e);
+			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+		} catch (IOException e) {
+			log.error("Create field form failed.", e);
+			return createErrorJson(e.getMessage());
+		}
+
+	}
+
 	@GetMapping(path = "/form/workflowForm", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public JsonNode workflowForm(@RequestParam String workflowId) throws ApiException, IOException {
 		AngularContainer root = new AngularContainer();
@@ -221,11 +453,11 @@ public class EsignController extends BaseEsignController {
 				.getLibraryDocuments(accessToken.getToken(), null, null, false, null, null).getLibraryDocumentList()
 				.stream().filter(libDoc -> libDoc.getStatus().equals(StatusEnum.ACTIVE)).collect(Collectors.toList());
 		List<Option> allDocuments = new ArrayList<>();
-		if (!CollectionUtils.isEmpty(list))
+		if (!CollectionUtils.isEmpty(libraryDocuments))
 			libraryDocuments.forEach(doc -> allDocuments.add(new Option(doc.getName(), doc.getId())));
 
 		List<com.davita.ecm.esign.model.extension.workflow.FileInfo> flist = workflow.getFileInfos();
-		if (!CollectionUtils.isEmpty(list)) {
+		if (!CollectionUtils.isEmpty(libraryDocuments)) {
 			container = new AngularContainer();
 			container.setLayout("horizontal");
 			container.setClassNames("full-width-container");
@@ -263,7 +495,7 @@ public class EsignController extends BaseEsignController {
 				aField.setLabel(recipient.getLabel());
 				aField.setName(PARTICIPANT_PREFIX + recipient.getName());
 				aField.setInitValue(recipient.getDefaultValue());
-				aField.setPattern("^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$");
+				aField.setPattern(EMAIL_PATTERN);
 				aField.setPatternError("Invalid email");
 				body.addChild(aField);
 			});
@@ -312,6 +544,77 @@ public class EsignController extends BaseEsignController {
 		return response;
 	}
 
+	private AngularInputField createAngularField(Field field) {
+		AngularInputField aField = null;
+		if (StringUtils.hasText(field.getInputType())) {
+			switch (field.getInputType()) {
+			case Field.TEXT_FIELD:
+				String validation = field.getValidation();
+				if (validation == null)
+					validation = Field.VALIDATION_NONE;
+				switch (validation) {
+				case Field.VALIDATION_NUMBER:
+					AngularNumericField numField = new AngularNumericField();
+					aField = numField;
+					break;
+				case Field.VALIDATION_DATE:
+					AngularDateField dateField = new AngularDateField();
+					aField = dateField;
+					break;
+				case Field.VALIDATION_CUSTOM:
+					AngularTextField textField = new AngularTextField();
+					aField = textField;
+					textField.setPattern(field.getValidationData());
+					if (StringUtils.hasText(field.getValidationErrMsg()))
+						textField.setPatternError(field.getValidationErrMsg());
+					break;
+				case Field.VALIDATION_EMAIL:
+					AngularTextField emailField = new AngularTextField();
+					aField = emailField;
+					emailField.setPattern(EMAIL_PATTERN);
+					break;
+				default:
+					AngularTextField txtField = new AngularTextField();
+					aField = txtField;
+				}
+				break;
+			case Field.CHECKBOX:
+				aField = new AngularCheckbox();
+				break;
+			case Field.DROP_DOWN:
+				aField = new AngularCombobox();
+				if (!CollectionUtils.isEmpty(field.getVisibleOptions())) {
+					List<Option> options = new ArrayList<>(20);
+					field.getVisibleOptions().forEach(option -> options.add(new Option(option, option)));
+					((AngularCombobox) aField).setOptions(options);
+				}
+				break;
+			case Field.LISTBOX:
+				aField = new AngularCheckbox();
+				break;
+			case Field.MULTILINE:
+				aField = new AngularCheckbox();
+				break;
+			default:
+				break;
+			}
+			if (aField != null) {
+				aField.setTooltip(field.getTooltip());
+				aField.setLabel(field.getDisplayLabel());
+				if (!StringUtils.hasText(aField.getLabel()))
+					aField.setLabel(field.getName());
+				aField.setName(FIELD_PREFIX + field.getName());
+				aField.setInitValue(field.getDefaultValue());
+				aField.setRequired(field.isRequired());
+				if (StringUtils.hasText(field.getTooltip()))
+					aField.setPlaceholder(field.getTooltip());
+				if (field.isReadOnly())
+					aField.setReadonly(true);
+			}
+		}
+		return aField;
+	}
+
 	@GetMapping(path = "/form/templateForm", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public JsonNode templateForm(@RequestParam String templateId) throws ApiException, IOException {
 		log.info("templateId: {}", templateId);
@@ -337,76 +640,11 @@ public class EsignController extends BaseEsignController {
 			container.setHtml("<h3>Template Parameters</h3>");
 			body.addChild(container);
 			list.getFields().forEach(field -> {
-				AngularInputField aField = null;
+				AngularInputField aField = createAngularField(field);
 				if (StringUtils.hasText(field.getAssignee()))
 					participants.add(field.getAssignee());
-				if (StringUtils.hasText(field.getInputType())) {
-					switch (field.getInputType()) {
-					case Field.TEXT_FIELD:
-						String validation = field.getValidation();
-						if (validation == null)
-							validation = Field.VALIDATION_NONE;
-						switch (validation) {
-						case Field.VALIDATION_NUMBER:
-							AngularNumericField numField = new AngularNumericField();
-							aField = numField;
-							break;
-						case Field.VALIDATION_DATE:
-							AngularDateField dateField = new AngularDateField();
-							aField = dateField;
-							break;
-						case Field.VALIDATION_CUSTOM:
-							AngularTextField textField = new AngularTextField();
-							aField = textField;
-							textField.setPattern(field.getValidationData());
-							if (StringUtils.hasText(field.getValidationErrMsg()))
-								textField.setPatternError(field.getValidationErrMsg());
-							break;
-						case Field.VALIDATION_EMAIL:
-							AngularTextField emailField = new AngularTextField();
-							aField = emailField;
-							emailField.setPattern("^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$");
-							break;
-						default:
-							AngularTextField txtField = new AngularTextField();
-							aField = txtField;
-						}
-						break;
-					case Field.CHECKBOX:
-						aField = new AngularCheckbox();
-						break;
-					case Field.DROP_DOWN:
-						aField = new AngularCombobox();
-						if (!CollectionUtils.isEmpty(field.getVisibleOptions())) {
-							List<Option> options = new ArrayList<>(20);
-							field.getVisibleOptions().forEach(option -> options.add(new Option(option, option)));
-							((AngularCombobox) aField).setOptions(options);
-						}
-						break;
-					case Field.LISTBOX:
-						aField = new AngularCheckbox();
-						break;
-					case Field.MULTILINE:
-						aField = new AngularCheckbox();
-						break;
-					default:
-						break;
-					}
-					if (aField != null) {
-						aField.setTooltip(field.getTooltip());
-						aField.setLabel(field.getDisplayLabel());
-						if (!StringUtils.hasText(aField.getLabel()))
-							aField.setLabel(field.getName());
-						aField.setName(FIELD_PREFIX + field.getName());
-						aField.setInitValue(field.getDefaultValue());
-						aField.setRequired(field.isRequired());
-						if (StringUtils.hasText(field.getTooltip()))
-							aField.setPlaceholder(field.getTooltip());
-						if (field.isReadOnly())
-							aField.setReadonly(true);
-						body.addChild(aField);
-					}
-				}
+				if (aField != null)
+					body.addChild(aField);
 			});
 		}
 
@@ -426,7 +664,7 @@ public class EsignController extends BaseEsignController {
 				aField.setLabel(recipient);
 				aField.setClassNames("dynamic-flex-1");
 				aField.setName(PARTICIPANT_PREFIX + recipient);
-				aField.setPattern("^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$");
+				aField.setPattern(EMAIL_PATTERN);
 				aField.setPatternError("Invalid email");
 				pContainer.addChild(aField);
 				AngularNumericField nField = new AngularNumericField();
@@ -533,7 +771,7 @@ public class EsignController extends BaseEsignController {
 
 	@PostMapping("/createWorkflowAgreement")
 	public JsonNode createWorkflowAgreement(@RequestBody ObjectNode json) {
-		log.info("json={}", json);
+		log.info("json={}", json.toPrettyString());
 		try {
 			String workflowId = json.has(WORKFLOW_ID_ENTRY) ? json.get(WORKFLOW_ID_ENTRY).asText() : null;
 			if (!StringUtils.hasText(workflowId))
@@ -558,19 +796,17 @@ public class EsignController extends BaseEsignController {
 				}
 			});
 
-			workflow.getMergeFieldsInfo().forEach(mfInfo -> {
-				String value = Utilities.getStringValue(json, FIELD_PREFIX + mfInfo.getFieldName());
-				if (StringUtils.hasText(value)) {
-					MergefieldInfo info = new MergefieldInfo();
-					info.setFieldName(mfInfo.getFieldName());
-					info.setDefaultValue(value);
-					agreementInfo.addMergeFieldInfoItem(info);
+			json.fieldNames().forEachRemaining(fName -> {
+				if (fName.startsWith(FIELD_PREFIX)) {
+					String value = Utilities.getStringValue(json, fName);
+					if (StringUtils.hasText(value)) {
+						MergefieldInfo info = new MergefieldInfo();
+						info.setFieldName(fName.substring(FIELD_PREFIX.length()));
+						info.setDefaultValue(value);
+						agreementInfo.addMergeFieldInfoItem(info);
+					}
 				}
 			});
-			MergefieldInfo info = new MergefieldInfo();
-			info.setFieldName("PatientName");
-			info.setDefaultValue("Test Name");
-			agreementInfo.addMergeFieldInfoItem(info);
 			int order = 1;
 			for (RecipientsListInfo rInfo : workflow.getRecipientsListInfo()) {
 				String email = Utilities.getStringValue(json, PARTICIPANT_PREFIX + rInfo.getName());
@@ -649,14 +885,15 @@ public class EsignController extends BaseEsignController {
 				}
 			});
 			json.fieldNames().forEachRemaining(name -> {
-				if( name.startsWith(PARTICIPANT_PREFIX) && !name.endsWith("-order")) {
+				if (name.startsWith(PARTICIPANT_PREFIX) && !name.endsWith("-order")) {
 					String email = Utilities.getStringValue(json, name);
-					if( StringUtils.hasText(email)) {
-						String sOrder = Utilities.getStringValue(json, name+"-order");
+					if (StringUtils.hasText(email)) {
+						String sOrder = Utilities.getStringValue(json, name + "-order");
 						int order = StringUtils.hasText(sOrder) ? Integer.parseInt(sOrder) : 1;
 						ParticipantSetInfo participantSetInfo = new ParticipantSetInfo();
 						participantSetInfo.setOrder(order);
-						participantSetInfo.setRole(Utilities.getTemplatePrticipantRole(list, name.substring(PARTICIPANT_PREFIX.length())));
+						participantSetInfo.setRole(
+								Utilities.getTemplatePrticipantRole(list, name.substring(PARTICIPANT_PREFIX.length())));
 						participantSetInfo.setName(name.substring(PARTICIPANT_PREFIX.length()));
 						ParticipantSetMemberInfo participantSetMemberInfo = new ParticipantSetMemberInfo();
 						participantSetMemberInfo.setEmail(email);

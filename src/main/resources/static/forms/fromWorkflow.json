@@ -42,6 +42,22 @@
 					"classNames": "p-button-success",
 					"type": "button",
 					"buttonType": "button",
+					"label": "Start with documents",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "sendForm",
+						"params": [
+							"form/workflowFormDocuments"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				},
+				{
+					"classNames": "p-button-success",
+					"type": "button",
+					"buttonType": "button",
 					"label": "Back",
 					"onclick": {
 						"member": "applicationServiceService",
