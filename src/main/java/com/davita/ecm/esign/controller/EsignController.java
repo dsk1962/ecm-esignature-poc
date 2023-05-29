@@ -614,6 +614,21 @@ public class EsignController extends BaseEsignController {
 		}
 		return aField;
 	}
+	@PostMapping(path = "/agreement/search", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public JsonNode searchAgreements(@RequestBody ObjectNode json) {
+		log.info("json={}", json);
+//		try {
+			//SearchAPI
+			ObjectNode result = createSuccessJson();
+			return result;
+//		} catch (ApiException e) {
+//			log.error("Create agreement from workflow failed.", e);
+//			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+//		} catch (IOException e) {
+//			log.error("Create agreement from workflow failed.", e);
+//			return createErrorJson(e.getMessage());
+//		}
+	}
 
 	@GetMapping(path = "/form/templateForm", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public JsonNode templateForm(@RequestParam String templateId) throws ApiException, IOException {
@@ -624,15 +639,18 @@ public class EsignController extends BaseEsignController {
 		body.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
 		root.addChild(body);
 
+		LibraryDocumentsApiExtension libApi = new LibraryDocumentsApiExtension(getApiClient());
+		LibraryDocumentCreationInfoV6 info = libApi.getLibraryDocumentInfo(accessToken.getToken(), templateId, null,
+				null, null);
+		FieldList list = libApi.getFormFields(accessToken.getToken(), templateId, null, null, null);
+
 		AngularContainer container = new AngularContainer();
 		container.setLayout("horizontal");
 		container.setClassNames(FULLWIDTH_CENTERED_CONTAINER_CSS_NAME);
-		container.setHtml("<h2>Template Data</h2>");
+		container.setHtml("<h2>Template: " + info.getName() + "</h2>");
 		body.addChild(container);
 		// populate form fields
 		HashSet<String> participants = new HashSet<>();
-		LibraryDocumentsApiExtension libApi = new LibraryDocumentsApiExtension(getApiClient());
-		FieldList list = libApi.getFormFields(accessToken.getToken(), templateId, null, null, null);
 		if (!CollectionUtils.isEmpty(list.getFields())) {
 			container = new AngularContainer();
 			container.setLayout("horizontal");
@@ -670,7 +688,7 @@ public class EsignController extends BaseEsignController {
 				AngularNumericField nField = new AngularNumericField();
 				nField.setLabel("Order");
 				nField.setStyle("max-width:200px;margin-left:10px;");
-				nField.setLabelStyle("min-width:60px");
+				nField.setLabelStyle("max-width:60px");
 				nField.setName(PARTICIPANT_PREFIX + recipient + "-order");
 				pContainer.addChild(nField);
 				body.addChild(pContainer);
@@ -910,9 +928,10 @@ public class EsignController extends BaseEsignController {
 				agreementInfo.setExternalId(externalId);
 			}
 			sValue = Utilities.getStringValue(json, AGREEMENT_NAME_ENTRY);
-			if (StringUtils.hasText(sValue)) {
+			if (StringUtils.hasText(sValue))
 				agreementInfo.setName(sValue);
-			}
+			else
+				agreementInfo.setName("New Agreement");
 
 			PostSignOption option = new PostSignOption();
 			option.setRedirectDelay(15);
