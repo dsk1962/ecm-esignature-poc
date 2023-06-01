@@ -1,22 +1,31 @@
 package com.davita.ecm.esign.model;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import com.davita.ecm.esign.model.extension.librarydocument.Field;
 import com.davita.ecm.esign.model.extension.librarydocument.FieldList;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.swagger.client.model.agreements.ParticipantSetInfo.RoleEnum;
 
+@Component
 public class Utilities {
-	private Utilities() {
+	
+	@Autowired
+	ObjectMapper objectMapper;
+
+	public String toHtmlJsonString( Object object) {
+		return objectMapper.convertValue(object, JsonNode.class).toPrettyString().replaceAll("\n", "<br/>").replaceAll(" ", "&nbsp;");
 	}
 
-	public static final String getStringValue(JsonNode json, String key) {
+	public String getStringValue(JsonNode json, String key) {
 		return json.has(key) ? (json.get(key).isNull() ? null : json.get(key).asText()) : null;
 	}
 
-	public static final RoleEnum getTemplatePrticipantRole(FieldList fields, String participantName) {
+	public RoleEnum getTemplatePrticipantRole(FieldList fields, String participantName) {
 		RoleEnum result = RoleEnum.FORM_FILLER;
 		if (fields != null && !CollectionUtils.isEmpty(fields.getFields()) && participantName != null)
 			for (Field field : fields.getFields()) {
@@ -27,4 +36,5 @@ public class Utilities {
 			}
 		return result;
 	}
+
 }

@@ -45,6 +45,22 @@
 					"config": {
 						"icon": "icon1"
 					}
+				},
+				{
+					"classNames": "TestClassBF p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Search",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "getStaticForm",
+						"params": [
+							"forms/searchTemplate.json"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
 				}
 			]
 		}

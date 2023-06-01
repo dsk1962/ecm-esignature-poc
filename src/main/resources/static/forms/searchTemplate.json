@@ -1,0 +1,190 @@
+{
+	"type": "container",
+	"style": "width:1000px;justify-content: center;",
+	"children": [
+		{
+			"style": "width:100%;justify-content: center;",
+			"layout": "horizontal",
+			"type": "container",
+			"html": "<h2>Search Agreements</h2>"
+		},
+		{
+			"type": "inputfield",
+			"label": "External Id",
+			"name": "externalId",
+			"subType": "textbox"
+		},
+		{
+			"type": "inputfield",
+			"subType": "combobox",
+			"label": "Status",
+			"name": "status",
+			"options": [
+				{
+					"name": "",
+					"value": ""
+				},
+				{
+					"name": "Waiting for my signature",
+					"value": "WAITING_FOR_MY_SIGNATURE"
+				},
+				{
+					"name": "Waiting for my approval",
+					"value": "WAITING_FOR_MY_APPROVAL"
+				},
+				{
+					"name": "Waiting for my delegation",
+					"value": "WAITING_FOR_MY_DELEGATION"
+				},
+				{
+					"name": "Waiting for my acknowledgement",
+					"value": "WAITING_FOR_MY_ACKNOWLEDGEMENT"
+				},
+				{
+					"name": "Waiting for my acceptance",
+					"value": "WAITING_FOR_MY_ACCEPTANCE"
+				},
+				{
+					"name": "Waiting for my form filling",
+					"value": "WAITING_FOR_MY_FORM_FILLING"
+				},
+				{
+					"name": "Waiting for prefill",
+					"value": "WAITING_FOR_PREFILL"
+				},
+				{
+					"name": "Waiting for authoring",
+					"value": "WAITING_FOR_AUTHORING"
+				},
+				{
+					"name": "Out for signature",
+					"value": "OUT_FOR_SIGNATURE"
+				},
+				{
+					"name": "Out for approval",
+					"value": "OUT_FOR_APPROVAL"
+				},
+				{
+					"name": "Out for delivery",
+					"value": "OUT_FOR_DELIVERY"
+				},
+				{
+					"name": "Out for acceptance",
+					"value": "OUT_FOR_ACCEPTANCE"
+				},
+				{
+					"name": "Out fro from filling",
+					"value": "OUT_FOR_FORM_FILLING"
+				},
+				{
+					"name": "Signed",
+					"value": "SIGNED"
+				},
+				{
+					"name": "Approved",
+					"value": "APPROVED"
+				},
+				{
+					"name": "Form filled",
+					"value": "FORM_FILLED"
+				},
+				{
+					"name": "Delivered",
+					"value": "DELIVERED"
+				},
+				{
+					"name": "Accepted",
+					"value": "ACCEPTED"
+				},
+				{
+					"name": "Archived",
+					"value": "ARCHIVED"
+				},
+				{
+					"name": "Cancelled",
+					"value": "CANCELLED"
+				},
+				{
+					"name": "Removed",
+					"value": "REMOVED"
+				},
+				{
+					"name": "Expired",
+					"value": "EXPIRED"
+				},
+				{
+					"name": "Authoring",
+					"value": "AUTHORING"
+				},
+				{
+					"name": "Active",
+					"value": "ACTIVE"
+				},
+				{
+					"name": "Disabled",
+					"value": "DISABLED"
+				},
+				{
+					"name": "Waiting for notarization",
+					"value": "WAITING_FOR_NOTARIZATION"
+				},
+				{
+					"name": "Accept before notarization",
+					"value": "ACCEPT_BEFORE_NOTARIZATION"
+				},
+				{
+					"name": "Other",
+					"value": "OTHER"
+				}
+			]
+		},
+		{
+			"type": "inputfield",
+			"label": "Query",
+			"name": "query",
+			"subType": "textbox"
+		},
+		{
+			"style": "width:100%;justify-content: center;",
+			"layout": "horizontal",
+			"classNames": "dynamic-toolbar",
+			"type": "container",
+			"children": [
+				{
+					"classNames": "p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Search",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "postForm",
+						"params": [
+							"agreement/search"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				},
+				{
+					"classNames": "p-button-success",
+					"type": "button",
+					"buttonType": "button",
+					"label": "Back",
+					"onclick": {
+						"member": "applicationServiceService",
+						"method": "getStaticForm",
+						"params": [
+							"forms/startForm.json"
+						]
+					},
+					"config": {
+						"icon": "icon1"
+					}
+				}
+			]
+		}
+	]
+}
+
+

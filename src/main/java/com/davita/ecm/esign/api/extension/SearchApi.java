@@ -19,7 +19,6 @@ import io.swagger.client.model.Configuration;
 import io.swagger.client.model.Pair;
 import io.swagger.client.model.ProgressRequestBody;
 import io.swagger.client.model.ProgressResponseBody;
-import io.swagger.client.model.agreements.AgreementCreationResponse;
 
 public class SearchApi {
 	private ApiClient apiClient;
@@ -33,7 +32,7 @@ public class SearchApi {
 	}
 
 	/**
-	 * Build call for createAgreement
+	 * Build call for search
 	 * @param authorization An &lt;a href&#x3D;\&quot;#\&quot; onclick&#x3D;\&quot;this.href&#x3D;oauthDoc()\&quot; oncontextmenu&#x3D;\&quot;this.href&#x3D;oauthDoc()\&quot; target&#x3D;\&quot;oauthDoc\&quot;&gt;OAuth Access Token&lt;/a&gt; with scopes:&lt;ul&gt;&lt;li style&#x3D;&#39;list-style-type: square&#39;&gt;&lt;a href&#x3D;\&quot;#\&quot; onclick&#x3D;\&quot;this.href&#x3D;oauthDoc(&#39;agreement_write&#39;)\&quot; oncontextmenu&#x3D;\&quot;this.href&#x3D;oauthDoc(&#39;agreement_write&#39;)\&quot; target&#x3D;\&quot;oauthDoc\&quot;&gt;agreement_write&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;in the format &lt;b&gt;&#39;Bearer {accessToken}&#39;. (required)
 	 * @param agreementInfo Information about the agreement that you want to create. (required)
 	 * @param xApiUser The userId or email of API caller using the account or group token in the format &lt;b&gt;userid:{userId} OR email:{email}.&lt;/b&gt; If it is not specified, then the caller is inferred from the token. (optional)
@@ -43,7 +42,7 @@ public class SearchApi {
 	 * @return Call to execute
 	 * @throws ApiException If fail to serialize the request body object
 	 */
-	public com.squareup.okhttp.Call createAgreementCall(String authorization, SearchRequest searchRequest,
+	public com.squareup.okhttp.Call searchCall(String authorization, SearchRequest searchRequest,
 			String xApiUser, String xOnBehalfOfUser, final ProgressResponseBody.ProgressListener progressListener,
 			final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
 		Object localVarPostBody = searchRequest;
@@ -51,10 +50,10 @@ public class SearchApi {
 		// create path and map variables
 		String localVarPath = "/search";
 
-		List<Pair> localVarQueryParams = new ArrayList<Pair>();
-		List<Pair> localVarCollectionQueryParams = new ArrayList<Pair>();
+		List<Pair> localVarQueryParams = new ArrayList<>();
+		List<Pair> localVarCollectionQueryParams = new ArrayList<>();
 
-		Map<String, String> localVarHeaderParams = new HashMap<String, String>();
+		Map<String, String> localVarHeaderParams = new HashMap<>();
 		if (authorization != null)
 			localVarHeaderParams.put("Authorization", apiClient.parameterToString(authorization));
 		if (xApiUser != null)
@@ -62,7 +61,7 @@ public class SearchApi {
 		if (xOnBehalfOfUser != null)
 			localVarHeaderParams.put("x-on-behalf-of-user", apiClient.parameterToString(xOnBehalfOfUser));
 
-		Map<String, Object> localVarFormParams = new HashMap<String, Object>();
+		Map<String, Object> localVarFormParams = new HashMap<>();
 
 		final String[] localVarAccepts = { "application/json" };
 		final String localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
@@ -92,8 +91,7 @@ public class SearchApi {
 				localVarPostBody, localVarHeaderParams, localVarFormParams, localVarAuthNames, progressRequestListener);
 	}
 
-	@SuppressWarnings("rawtypes")
-	private com.squareup.okhttp.Call createAgreementValidateBeforeCall(String authorization,
+	private com.squareup.okhttp.Call searchValidateBeforeCall(String authorization,
 			SearchRequest searchRequest, String xApiUser, String xOnBehalfOfUser,
 			final ProgressResponseBody.ProgressListener progressListener,
 			final ProgressRequestBody.ProgressRequestListener progressRequestListener) throws ApiException {
@@ -101,18 +99,17 @@ public class SearchApi {
 		// verify the required parameter 'authorization' is set
 		if (authorization == null) {
 			throw new ApiException(
-					"Missing the required parameter 'authorization' when calling createAgreement(Async)");
+					"Missing the required parameter 'authorization' when calling search(Async)");
 		}
 
 		// verify the required parameter 'agreementInfo' is set
 		if (searchRequest == null) {
 			throw new ApiException(
-					"Missing the required parameter 'agreementInfo' when calling createAgreement(Async)");
+					"Missing the required parameter 'agreementInfo' when calling search(Async)");
 		}
 
-		com.squareup.okhttp.Call call = createAgreementCall(authorization, searchRequest, xApiUser, xOnBehalfOfUser,
-				progressListener, progressRequestListener);
-		return call;
+		return searchCall(authorization, searchRequest, xApiUser, xOnBehalfOfUser, progressListener,
+				progressRequestListener);
 
 	}
 
@@ -126,10 +123,10 @@ public class SearchApi {
 	 * @return AgreementCreationResponse
 	 * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
 	 */
-	public SearchResponse createAgreement(String authorization, SearchRequest searchRequest, String xApiUser,
+	public SearchResponse search(String authorization, SearchRequest searchRequest, String xApiUser,
 			String xOnBehalfOfUser) throws ApiException {
-		ApiResponse<SearchResponse> resp = createAgreementWithHttpInfo(authorization, searchRequest,
-				xApiUser, xOnBehalfOfUser);
+		ApiResponse<SearchResponse> resp = searchWithHttpInfo(authorization, searchRequest, xApiUser,
+				xOnBehalfOfUser);
 		return resp.getData();
 	}
 
@@ -143,11 +140,11 @@ public class SearchApi {
 	 * @return ApiResponse&lt;AgreementCreationResponse&gt;
 	 * @throws ApiException If fail to call the API, e.g. server error or cannot deserialize the response body
 	 */
-	public ApiResponse<SearchResponse> createAgreementWithHttpInfo(String authorization,
-			SearchRequest searchRequest, String xApiUser, String xOnBehalfOfUser) throws ApiException {
-		com.squareup.okhttp.Call call = createAgreementValidateBeforeCall(authorization, searchRequest, xApiUser,
+	public ApiResponse<SearchResponse> searchWithHttpInfo(String authorization, SearchRequest searchRequest,
+			String xApiUser, String xOnBehalfOfUser) throws ApiException {
+		com.squareup.okhttp.Call call = searchValidateBeforeCall(authorization, searchRequest, xApiUser,
 				xOnBehalfOfUser, null, null);
-		Type localVarReturnType = new TypeToken<AgreementCreationResponse>() {
+		Type localVarReturnType = new TypeToken<SearchResponse>() {
 		}.getType();
 		return apiClient.execute(call, localVarReturnType);
 	}
@@ -163,30 +160,18 @@ public class SearchApi {
 	 * @return The request call
 	 * @throws ApiException If fail to process the API call, e.g. serializing the request body object
 	 */
-	public com.squareup.okhttp.Call createAgreementAsync(String authorization, SearchRequest searchRequest,
-			String xApiUser, String xOnBehalfOfUser, final ApiCallback<AgreementCreationResponse> callback)
+	public com.squareup.okhttp.Call searchAsync(String authorization, SearchRequest searchRequest,
+			String xApiUser, String xOnBehalfOfUser, final ApiCallback<SearchResponse> callback)
 			throws ApiException {
 
 		ProgressResponseBody.ProgressListener progressListener = null;
 		ProgressRequestBody.ProgressRequestListener progressRequestListener = null;
-
 		if (callback != null) {
-			progressListener = new ProgressResponseBody.ProgressListener() {
-				@Override
-				public void update(long bytesRead, long contentLength, boolean done) {
-					callback.onDownloadProgress(bytesRead, contentLength, done);
-				}
-			};
-
-			progressRequestListener = new ProgressRequestBody.ProgressRequestListener() {
-				@Override
-				public void onRequestProgress(long bytesWritten, long contentLength, boolean done) {
-					callback.onUploadProgress(bytesWritten, contentLength, done);
-				}
-			};
+			progressListener = callback::onDownloadProgress;
+			progressRequestListener = callback::onUploadProgress;
 		}
 
-		com.squareup.okhttp.Call call = createAgreementValidateBeforeCall(authorization, searchRequest, xApiUser,
+		com.squareup.okhttp.Call call = searchValidateBeforeCall(authorization, searchRequest, xApiUser,
 				xOnBehalfOfUser, progressListener, progressRequestListener);
 		Type localVarReturnType = new TypeToken<SearchResponse>() {
 		}.getType();
