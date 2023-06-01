@@ -15,6 +15,7 @@ import com.davita.ecm.esign.model.AngularButton;
 import com.davita.ecm.esign.model.AngularContainer;
 import com.davita.ecm.esign.model.AngularMethodCall;
 import com.davita.ecm.esign.model.AngularTable;
+import com.davita.ecm.esign.model.AngularToolbarColumn;
 import com.davita.ecm.esign.model.AngularWidget;
 import com.davita.ecm.esign.model.extension.librarydocument.FieldList;
 import com.davita.ecm.esign.model.extension.search.AgreementAssetsCriteria;
@@ -244,6 +245,15 @@ public class AgreementController  extends BaseEsignController {
 			container.setHtml("<h2>Seacrh Results</h2>");
 			body.addChild(container);
 			AngularTable table = new AngularTable();
+			AngularToolbarColumn toolbarColumn = new AngularToolbarColumn();
+			table.addColumn(toolbarColumn);
+			AngularButton toolbarButton = new AngularButton();
+			toolbarColumn.addButton(toolbarButton);
+			toolbarButton.setClassNames("p-button-rounded p-button-success p-button-text");
+			ObjectNode config = objectMapper.createObjectNode();
+			config.put("icon", "pi pi-search");
+			toolbarButton.setConfig(config);
+			
 			AngularWidget column = new AngularWidget();
 			column.setLabel("Name");
 			column.setName("name");

@@ -19,4 +19,5 @@ public class AngularWidget {
 	private String classNames;
 	private String subType;
 	private Object config;
+	
 }
