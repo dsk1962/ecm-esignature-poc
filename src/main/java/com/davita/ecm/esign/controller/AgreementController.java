@@ -4,8 +4,10 @@ import java.io.IOException;
 
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.davita.ecm.esign.api.extension.LibraryDocumentsApiExtension;
@@ -33,17 +35,19 @@ import io.swagger.client.model.agreements.AgreementCreationInfo.SignatureTypeEnu
 import io.swagger.client.model.agreements.AgreementCreationInfo.StateEnum;
 import io.swagger.client.model.agreements.AgreementCreationResponse;
 import io.swagger.client.model.agreements.AgreementInfo;
+import io.swagger.client.model.agreements.DocumentUrl;
 import io.swagger.client.model.agreements.ExternalId;
 import io.swagger.client.model.agreements.FileInfo;
 import io.swagger.client.model.agreements.MergefieldInfo;
 import io.swagger.client.model.agreements.ParticipantSetInfo;
 import io.swagger.client.model.agreements.ParticipantSetMemberInfo;
 import io.swagger.client.model.agreements.PostSignOption;
+import io.swagger.client.model.agreements.SigningUrlResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @Slf4j
-public class AgreementController  extends BaseEsignController {
+public class AgreementController extends BaseEsignController {
 	@PostMapping("/createTemplateAgreement")
 	public JsonNode createTemplateAgreement(@RequestBody ObjectNode json) {
 		log.info("json={}", json);
@@ -212,6 +216,7 @@ public class AgreementController  extends BaseEsignController {
 			return createErrorJson(e.getMessage());
 		}
 	}
+
 	@PostMapping(path = "/agreement/search", consumes = MediaType.ALL_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public JsonNode searchAgreements(@RequestBody ObjectNode json) {
 		log.info("json={}", json);
@@ -253,7 +258,29 @@ public class AgreementController  extends BaseEsignController {
 			ObjectNode config = objectMapper.createObjectNode();
 			config.put("icon", "pi pi-search");
 			toolbarButton.setConfig(config);
+			toolbarButton.setTooltip("Open combined document");
+			AngularMethodCall call = new AngularMethodCall();
+			call.setMember(APPLICATION_SERVICE_TS_NAME);
+			call.setMethod("sendData");
+			call.addParameter("openCombinedDocument");
+			call.addParameter("id");
+			toolbarButton.setOnclick(call);
 			
+			toolbarButton = new AngularButton();
+			toolbarColumn.addButton(toolbarButton);
+			toolbarButton.setClassNames("p-button-rounded p-button-success p-button-text");
+			config = objectMapper.createObjectNode();
+			config.put("icon", "pi pi-user");
+			toolbarButton.setConfig(config);
+			toolbarButton.setTooltip("Sign agreement");
+			call = new AngularMethodCall();
+			call.setMember(APPLICATION_SERVICE_TS_NAME);
+			call.setMethod("sendData");
+			call.addParameter("signAgreement");
+			call.addParameter("id");
+			toolbarButton.setOnclick(call);
+			
+
 			AngularWidget column = new AngularWidget();
 			column.setLabel("Name");
 			column.setName("name");
@@ -276,6 +303,7 @@ public class AgreementController  extends BaseEsignController {
 			table.addColumn(column);
 			body.addChild(table);
 			table.setData(response.getAgreementAssetsResults().getAgreementAssetsResultList());
+
 			AngularContainer toolbar = new AngularContainer();
 			toolbar.setLayout("horizontal");
 			toolbar.setClassNames("full-width-centered-container dynamic-toolbar");
@@ -283,7 +311,7 @@ public class AgreementController  extends BaseEsignController {
 			AngularButton button = new AngularButton();
 			toolbar.addChild(button);
 			button.setLabel("Back");
-			AngularMethodCall call = new AngularMethodCall();
+			call = new AngularMethodCall();
 			call.setMember(APPLICATION_SERVICE_TS_NAME);
 			call.setMethod("getStaticForm");
 			call.addParameter("forms/searchTemplate.json");
@@ -296,6 +324,46 @@ public class AgreementController  extends BaseEsignController {
 			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
 		} catch (IOException e) {
 			log.error("Create agreement from workflow failed.", e);
+			return createErrorJson(e.getMessage());
+		}
+	}
+
+	@GetMapping(path = "/openCombinedDocument", consumes = MediaType.ALL_VALUE, produces = MediaType.ALL_VALUE)
+	public JsonNode openCombinedDocument(@RequestParam String id) {
+		log.info("id={}", id);
+		try {
+			AgreementsApi api = new AgreementsApi(getApiClient());
+			DocumentUrl documentUrl = api.getCombinedDocumentUrl(accessToken.getToken(), id, null, null, null, null, null, null);
+			ObjectNode result = createSuccessJson();
+			ObjectNode newWindow = objectMapper.createObjectNode();
+			newWindow.put("url", documentUrl.getUrl());
+			result.set("newWindow", newWindow);
+			return result;
+		} catch (ApiException e) {
+			log.error("Open agreement combined document failed.", e);
+			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+		} catch (IOException e) {
+			log.error("Open agreement combined document failed.", e);
+			return createErrorJson(e.getMessage());
+		}
+	}
+	@GetMapping(path = "/signAgreement", consumes = MediaType.ALL_VALUE, produces = MediaType.ALL_VALUE)
+	public JsonNode signAgreement(@RequestParam String id) {
+		log.info("id={}", id);
+		try {
+			AgreementsApi api = new AgreementsApi(getApiClient());
+			SigningUrlResponse signingUrlResponse = api.getSigningUrl(accessToken.getToken(), id, null, null);
+			
+			ObjectNode result = createSuccessJson();
+			ObjectNode newWindow = objectMapper.createObjectNode();
+			newWindow.put("url", signingUrlResponse.getSigningUrlSetInfos().get(0).getSigningUrls().get(0).getEsignUrl());
+			result.set("newWindow", newWindow);
+			return result;
+		} catch (ApiException e) {
+			log.error("Open agreement combined document failed.", e);
+			return createErrorJson(e.getMessage() + ". Response: " + e.getResponseBody());
+		} catch (IOException e) {
+			log.error("Open agreement combined document failed.", e);
 			return createErrorJson(e.getMessage());
 		}
 	}

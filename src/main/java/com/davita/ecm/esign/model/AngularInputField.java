@@ -14,7 +14,6 @@ public class AngularInputField extends AngularWidget {
 	private String id;
 	private boolean required;
 	private String placeholder;
-	private String tooltip;
 	private Boolean disabled;
 	private Boolean readonly;
 	private Object value;
